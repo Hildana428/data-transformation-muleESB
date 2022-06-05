@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<file:config name="File_Config" doc:name="File Config" doc:id="c21e8000-e9ee-458e-9499-023c11c24d99" >
+		<file:connection workingDir="C:\Users\debli\MuleSoft\data-transformation\output" />
+	</file:config>
+	<flow name="data-transformation-xmlFlow" doc:id="10fd7a7e-9617-445a-832c-350adec934c1" >
+		<file:listener doc:name="On New or Updated File" doc:id="e0961f54-9a57-457b-99e3-92816f1c99fa" directory="C:\Users\debli\MuleSoft\data-transformation\input" moveToDirectory="C:\Users\debli\MuleSoft\data-transformation\backup">
+			<scheduling-strategy >
+				<fixed-frequency frequency="10" timeUnit="SECONDS" />
+			</scheduling-strategy>
+			<file:matcher filenamePattern="*.xml" />
+		</file:listener>
+		<set-variable value="#[attributes.fileName]" doc:name="file Name" doc:id="208a9c37-8dbd-4022-bbf4-e4676ce8d0ad" variableName="fileName"/>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="7e3ec91c-5e72-4ddd-a969-ccc37af960cc" >
+			<route >
+				<flow-ref doc:name="to csv" doc:id="2dc0e2f9-732a-4a3b-97b8-2e9b033a8e01" name="to-csv"/>
+			</route>
+			<route >
+				<flow-ref doc:name="to json" doc:id="008a19c5-0171-4d1d-984c-a3017552947d" name="to-json"/>
+			</route>
+			<route >
+				<flow-ref doc:name="to xlsx" doc:id="393e4e2c-c5c5-4b73-8c1a-84de56e6325c" name="to-xlsx"/>
+			</route>
+		</scatter-gather>
+	</flow>
+	<sub-flow name="to-csv" doc:id="0d19dcb7-2b8f-472b-bb0c-343b3036f450" >
+		<ee:transform doc:name="Transform Message" doc:id="2d90281a-d00a-47eb-bb3d-4acd01a239bf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+payload.DATA.*ROW]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write to csv" doc:id="4d68e84b-c0a9-45ee-988a-65a978c94292" config-ref="File_Config" path="#[&quot;file-&quot; ++ now() as String {format: 'y-M-d-h-m-s'} ++ &quot;-&quot; ++ vars.fileName ++ &quot;.csv&quot;]"/>
+	</sub-flow>
+	<sub-flow name="to-json" doc:id="1265d1e1-7726-44ec-83dd-287a1ef014fe" >
+		<ee:transform doc:name="Transform Message" doc:id="a397ad7c-2de4-4b52-9644-b3a1ab463d43" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.DATA.*ROW]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write to json" doc:id="962bc3e4-e4fc-4eae-954a-fff6a875005c" config-ref="File_Config" path="#[&quot;file-&quot; ++ now() as String {format: 'y-M-d-h-m-s'} ++ &quot;-&quot; ++ vars.fileName ++ &quot;.json&quot;]"/>
+	</sub-flow>
+	<sub-flow name="to-xlsx" doc:id="02797371-104d-448b-9e2d-c126fa9ae341" >
+		<ee:transform doc:name="Transform Message" doc:id="2288db1a-c0a2-4b65-9ffd-e8a91815993f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/xlsx
+---
+{
+	'sheet1': payload.DATA.*ROW
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<file:write doc:name="Write to xlsx" doc:id="37f8d477-7a37-44a2-8d32-41898b1c559c" config-ref="File_Config" path="#[&quot;file-&quot; ++ now() as String {format: 'y-M-d-h-m-s'} ++ &quot;-&quot; ++ vars.fileName ++ &quot;.xlsx&quot;]"/>
+	</sub-flow>
+</mule>
